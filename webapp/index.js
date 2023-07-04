@@ -77,6 +77,7 @@ const renderLoop = () => {
     then = now - (delta % interval)
 
     emulator.tick();
+    emulator.tick_timers();
     
     drawGrid();
     drawPixels(); 

@@ -226,13 +226,66 @@ impl Emu {
                     self.pc += 2;
                 }
             }
+            // SET VX
             (6, x, _, _) => {
                 let nn = (opcode & 0x00FF) as u8;
                 self.registers[x as usize] = nn;
             }
+            // ADD VX
             (7, x, _, _) => {
                 let n = (opcode & 0x00FF) as u8;
                 self.registers[x as usize] = self.registers[x as usize].wrapping_add(n);
+            }
+            // SET VX VY
+            (8, x, y, 0) => {
+                self.registers[x as usize] = self.registers[y as usize];
+            }
+            // OR VX VY
+            (8, x, y, 1) => {
+                self.registers[x as usize] |= self.registers[y as usize];
+            }
+            // AND VX VY
+            (8, x, y, 2) => {
+                self.registers[x as usize] &= self.registers[y as usize];
+            }
+            // XOR VX VY
+            (8, x, y, 3) => {
+                self.registers[x as usize] ^= self.registers[y as usize];
+            }
+            // ADD VX VY
+            (8, x, y, 4) => {
+                let (vx, carry) =
+                    self.registers[x as usize].overflowing_add(self.registers[y as usize]);
+                self.registers[x as usize] = vx;
+
+                self.registers[0xF] = if carry { 1 } else { 0 }
+            }
+            // SUB VX VY
+            (8, x, y, 5) => {
+                let (vx, carry) =
+                    self.registers[x as usize].overflowing_sub(self.registers[y as usize]);
+                self.registers[x as usize] = vx;
+
+                self.registers[0xF] = if carry { 0 } else { 1 }
+            }
+            // VX >> 1
+            (8, x, _, 6) => {
+                let lsb = self.registers[x as usize] & 1;
+                self.registers[x as usize] >>= 1;
+                self.registers[0xF] = lsb;
+            }
+            // VX = VY - VX
+            (8, x, y, 7) => {
+                let (vx, carry) =
+                    self.registers[y as usize].overflowing_sub(self.registers[x as usize]);
+                self.registers[x as usize] = vx;
+
+                self.registers[0xF] = if carry { 0 } else { 1 }
+            }
+            (8, x, _, 0xE) => {
+                let msb = self.registers[x as usize] & 0xF0;
+                self.registers[x as usize] <<= 1;
+                self.registers[0xF] = msb;
             }
             (9, x, y, 0) => {
                 if self.registers[x as usize] != self.registers[y as usize] {
@@ -242,6 +295,15 @@ impl Emu {
             (0xA, _, _, _) => {
                 let nnn = opcode & 0x0FFF;
                 self.i_register = nnn;
+            }
+            (0xB, _, _, _) => {
+                let nnn = opcode & 0x0FFF;
+                self.pc = self.registers[0] as u16 + nnn;
+            }
+            (0xC, x, _, _) => {
+                let nn = (opcode & 0x00FF) as u8;
+                let rng: u8 = rand::random();
+                self.registers[x as usize] = rng & nn;
             }
             (0xD, x, y, n) => {
                 let x_coord = self.registers[x as usize] as u16;
@@ -269,6 +331,59 @@ impl Emu {
                     self.registers[0xF] = 1;
                 } else {
                     self.registers[0xF] = 0;
+                }
+            }
+            (0xE, x, 0x9, 0xE) => {
+                if self.keys[x as usize] {
+                    self.pc += 2;
+                }
+            }
+            (0xE, x, 0xA, 0x1) => {
+                if !self.keys[x as usize] {
+                    self.pc += 2;
+                }
+            }
+            (0xF, x, 0x0, 0x7) => {
+                self.registers[x as usize] = self.delay_timer;
+            }
+            (0xF, x, 0x0, 0xA) => {
+                if !self.keys[x as usize] {
+                    self.pc -= 2;
+                }
+            }
+            (0xF, x, 0x1, 0x5) => {
+                self.delay_timer = self.registers[x as usize];
+            }
+            (0xF, x, 0x1, 0x8) => {
+                self.sound_timer = self.registers[x as usize];
+            }
+            (0xF, x, 0x1, 0xE) => {
+                self.i_register += self.registers[x as usize] as u16;
+            }
+            (0xF, x, 0x2, 0x9) => {
+                self.i_register = self.registers[x as usize] as u16 * 5;
+            }
+            (0xF, x, 0x3, 0x3) => {
+                let vx = self.registers[x as usize];
+
+                let hundreds = vx / 100;
+                let tens = vx / 10 % 10;
+                let ones = vx % 10;
+
+                self.memory[self.i_register as usize] = hundreds;
+                self.memory[(self.i_register + 1) as usize] = tens;
+                self.memory[(self.i_register + 2) as usize] = ones;
+            }
+            (0xF, x, 0x5, 0x5) => {
+                let i_reg = self.i_register as usize;
+                for i in 0..=x as usize {
+                    self.memory[i + i_reg] = self.registers[i];
+                }
+            }
+            (0xF, x, 0x6, 0x5) => {
+                let i_reg = self.i_register as usize;
+                for i in 0..=x as usize {
+                    self.registers[i] = self.memory[i + i_reg]
                 }
             }
             (_, _, _, _) => {
