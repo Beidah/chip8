@@ -1,4 +1,4 @@
-import { Screen } from "chip8";
+import { Screen, Emu } from "chip8";
 import { memory } from "chip8/chip8_bg.wasm";
 
 const CELL_SIZE = 16;
@@ -6,9 +6,9 @@ const GRID_COLOR = "#cccccc";
 const OFF_COLOR = "#000000";
 const ON_COLOR = "#ffffff";
 
-const draw_screen = Screen.new();
-const width = draw_screen.width();
-const height = draw_screen.height();
+const emulator = Emu.new();
+const width = emulator.width();
+const height = emulator.height();
 
 const canvas = document.getElementById("chip-8");
 canvas.height = (CELL_SIZE + 1) * height + 1;
@@ -40,7 +40,7 @@ const getIndex = (row, coloumn) => {
 }
 
 const drawPixels = () => {
-  const pixelPtr = draw_screen.pixels();
+  const pixelPtr = emulator.pixels();
   const pixels = new Uint8Array(memory.buffer, pixelPtr, width * height);
 
   ctx.beginPath();
@@ -61,13 +61,26 @@ const drawPixels = () => {
   }
 }
 
-const renderLoop = () => {
-  drawGrid();
-  drawPixels();
+const FPS = 60;
+let now;
+let then = Date.now();
+let interval = 1000 / FPS;
+let delta;
 
+const renderLoop = () => {
   requestAnimationFrame(renderLoop);
+
+  now = Date.now();
+  delta = now - then;
+
+  if (delta > interval) {
+    then = now - (delta % interval)
+
+    emulator.tick();
+    
+    drawGrid();
+    drawPixels(); 
+  }
 }
 
-drawGrid();
-drawPixels();
-requestAnimationFrame(renderLoop)
+renderLoop();
