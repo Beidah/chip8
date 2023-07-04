@@ -131,8 +131,6 @@ impl Emu {
 
         new_emu.memory[..FONTS.len()].copy_from_slice(&FONTS);
 
-        new_emu.load(IBM_LOGO);
-
         new_emu
     }
 
