@@ -1,7 +1,7 @@
 mod utils;
 
 use wasm_bindgen::prelude::*;
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, KeyboardEvent};
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -49,10 +49,6 @@ impl Screen {
 
     fn get_index(&self, x: usize, y: usize) -> usize {
         y * self.width + x
-    }
-
-    fn set_pixel(&mut self, x: usize, y: usize, value: bool) {
-        self.pixels[y * self.width + x] = value;
     }
 
     fn clear(&mut self) {
@@ -153,6 +149,11 @@ impl Chip8 {
         self.memory[start..end].copy_from_slice(program);
     }
 
+    pub fn keypress(&mut self, key: usize, pressed: bool) {
+        self.keys[key] = pressed;
+        log!("Key {} pressed: {}", key, pressed);
+    }
+
     pub fn tick(&mut self) {
         let opcode = self.fetch();
         self.execute(opcode);
@@ -171,14 +172,14 @@ impl Chip8 {
         }
     }
 
-    pub fn fetch(&mut self) -> u16 {
+    fn fetch(&mut self) -> u16 {
         let opcode: u16 = (self.memory[self.pc as usize] as u16) << 8
             | (self.memory[(self.pc + 1) as usize] as u16);
         self.pc += 2;
         opcode
     }
 
-    pub fn execute(&mut self, opcode: u16) {
+    fn execute(&mut self, opcode: u16) {
         // log!("Executing opcode: {opcode:x}");
 
         let digit1 = (opcode & 0xF000) >> 12;
@@ -321,7 +322,7 @@ impl Chip8 {
                             let index = self.screen.get_index(x, y);
 
                             flipped |= self.screen.pixels[index];
-                            self.screen.set_pixel(x, y, true);
+                            self.screen.pixels[index] ^= true;
                         }
                     }
                 }
@@ -333,12 +334,14 @@ impl Chip8 {
                 }
             }
             (0xE, x, 0x9, 0xE) => {
-                if self.keys[x as usize] {
+                let vx = self.registers[x as usize];
+                if self.keys[vx as usize] {
                     self.pc += 2;
                 }
             }
             (0xE, x, 0xA, 0x1) => {
-                if !self.keys[x as usize] {
+                let vx = self.registers[x as usize];
+                if !self.keys[vx as usize] {
                     self.pc += 2;
                 }
             }
@@ -480,5 +483,34 @@ impl EmuWasm {
 
     pub fn reset(&mut self) {
         self.chip8.reset();
+    }
+
+    pub fn keypress(&mut self, evt: KeyboardEvent, pressed: bool) {
+        let key = evt.key();
+        if let Some(k) = key2btn(&key) {
+            self.chip8.keypress(k, pressed);
+        }
+    }
+}
+
+fn key2btn(key: &str) -> Option<usize> {
+    match key {
+        "1" => Some(0x1),
+        "2" => Some(0x2),
+        "3" => Some(0x3),
+        "4" => Some(0xC),
+        "q" => Some(0x4),
+        "w" => Some(0x5),
+        "e" => Some(0x6),
+        "r" => Some(0xD),
+        "a" => Some(0x7),
+        "s" => Some(0x8),
+        "d" => Some(0x9),
+        "f" => Some(0xE),
+        "z" => Some(0xA),
+        "x" => Some(0x0),
+        "c" => Some(0xB),
+        "v" => Some(0xF),
+        _ => None,
     }
 }

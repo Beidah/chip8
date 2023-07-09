@@ -31,10 +31,10 @@ async function run() {
   let chip8 = new EmuWasm();
 
   document.addEventListener("keydown", function (ev) {
-    // chip8.keyDown(ev.keyCode);
+    chip8.keypress(ev, true);
   });
   document.addEventListener("keyup", function (ev) {
-    // chip8.keyUp(ev.keyCode);
+    chip8.keypress(ev, false);
   });
 
   input.addEventListener("change", function (ev) {
@@ -69,13 +69,14 @@ async function run() {
 
     if (delta > interval) {
 
+
       for (let i = 0; i < TICKS_PER_FRAME; i++) {
         chip8.tick();
       }
       chip8.tick_timers();
 
       ctx.fillStyle = "#000000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, SCALE * width, SCALE * height);
 
       ctx.fillStyle = "#ffffff";
       chip8.draw_screen(SCALE);
