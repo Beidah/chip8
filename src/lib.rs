@@ -1,6 +1,7 @@
 mod utils;
 
 use wasm_bindgen::prelude::*;
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -26,14 +27,12 @@ const REGISTER_SIZE: usize = 16;
 const KEYBOARD_SIZE: usize = 16;
 const START_ADDR: u16 = 0x200;
 
-#[wasm_bindgen]
 pub struct Screen {
     width: usize,
     height: usize,
     pixels: [bool; SCREEN_WIDTH * SCREEN_HEIGHT],
 }
 
-#[wasm_bindgen]
 impl Screen {
     pub fn new() -> Screen {
         let width = SCREEN_WIDTH;
@@ -68,8 +67,8 @@ impl Screen {
         self.height
     }
 
-    pub fn pixels(&self) -> *const bool {
-        self.pixels.as_ptr()
+    pub fn pixels(&self) -> &[bool] {
+        &self.pixels
     }
 }
 
@@ -99,7 +98,7 @@ const FONTS: [u8; 80] = [
 ];
 
 #[wasm_bindgen]
-pub struct Emu {
+pub struct Chip8 {
     pc: u16,
     memory: [u8; RAM_SIZE],
     screen: Screen,
@@ -113,10 +112,10 @@ pub struct Emu {
 }
 
 #[wasm_bindgen]
-impl Emu {
-    pub fn new() -> Emu {
+impl Chip8 {
+    pub fn new() -> Chip8 {
         utils::set_panic_hook();
-        let mut new_emu = Emu {
+        let mut new_emu = Chip8 {
             screen: Screen::new(),
             memory: [0; RAM_SIZE],
             pc: START_ADDR,
@@ -413,12 +412,73 @@ impl Emu {
     }
 
     pub fn pixels(&self) -> *const bool {
-        self.screen.pixels()
+        self.screen.pixels().as_ptr()
     }
 }
 
-impl Default for Emu {
+impl Default for Chip8 {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[wasm_bindgen]
+pub struct EmuWasm {
+    chip8: Chip8,
+    ctx: CanvasRenderingContext2d,
+}
+
+#[wasm_bindgen]
+impl EmuWasm {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Result<EmuWasm, JsValue> {
+        let chip8 = Chip8::new();
+
+        let document = web_sys::window().unwrap().document().unwrap();
+        let canvas = document.get_element_by_id("chip-8").unwrap();
+        let canvas: HtmlCanvasElement = canvas
+            .dyn_into()
+            .map_err(|_| JsValue::from_str("Canvas element not found"))?;
+
+        let ctx = canvas
+            .get_context("2d")
+            .unwrap()
+            .unwrap()
+            .dyn_into::<CanvasRenderingContext2d>()
+            .unwrap();
+
+        Ok(Self { chip8, ctx })
+    }
+
+    pub fn draw_screen(&mut self, scale: usize) {
+        let disp = self.chip8.screen.pixels();
+        for (i, pixel) in disp.iter().enumerate() {
+            if *pixel {
+                let x = i % SCREEN_WIDTH;
+                let y = i / SCREEN_WIDTH;
+                self.ctx.fill_rect(
+                    (x * scale) as f64,
+                    (y * scale) as f64,
+                    scale as f64,
+                    scale as f64,
+                );
+            }
+        }
+    }
+
+    pub fn load_game(&mut self, game: js_sys::Uint8Array) {
+        self.chip8.load(&game.to_vec());
+    }
+
+    pub fn tick(&mut self) {
+        self.chip8.tick();
+    }
+
+    pub fn tick_timers(&mut self) {
+        self.chip8.tick_timers();
+    }
+
+    pub fn reset(&mut self) {
+        self.chip8.reset();
     }
 }
