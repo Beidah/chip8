@@ -8,7 +8,9 @@
   },
   "scripts": {
     "build": "webpack --config webpack.config.js",
-    "start": "webpack-dev-server"
+    "start": "webpack-dev-server",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "repository": {
     "type": "git",
@@ -29,6 +31,7 @@
     "autoprefixer": "^10.4.14",
     "copy-webpack-plugin": "^5.0.0",
     "css-loader": "^6.8.1",
+    "gh-pages": "^5.0.0",
     "hello-wasm-pack": "^0.1.0",
     "postcss": "^8.4.25",
     "postcss-loader": "^7.3.3",
