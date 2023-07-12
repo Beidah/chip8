@@ -151,7 +151,6 @@ impl Chip8 {
 
     pub fn keypress(&mut self, key: usize, pressed: bool) {
         self.keys[key] = pressed;
-        log!("Key {} pressed: {}", key, pressed);
     }
 
     pub fn tick(&mut self) {
@@ -486,8 +485,8 @@ impl EmuWasm {
     }
 
     pub fn keypress(&mut self, evt: KeyboardEvent, pressed: bool) {
-        let key = evt.key();
-        if let Some(k) = key2btn(&key) {
+        let code = evt.code();
+        if let Some(k) = key2btn(&code) {
             self.chip8.keypress(k, pressed);
         }
     }
@@ -495,22 +494,22 @@ impl EmuWasm {
 
 fn key2btn(key: &str) -> Option<usize> {
     match key {
-        "1" => Some(0x1),
-        "2" => Some(0x2),
-        "3" => Some(0x3),
-        "4" => Some(0xC),
-        "q" => Some(0x4),
-        "w" => Some(0x5),
-        "e" => Some(0x6),
-        "r" => Some(0xD),
-        "a" => Some(0x7),
-        "s" => Some(0x8),
-        "d" => Some(0x9),
-        "f" => Some(0xE),
-        "z" => Some(0xA),
-        "x" => Some(0x0),
-        "c" => Some(0xB),
-        "v" => Some(0xF),
+        "Digit1" => Some(0x1),
+        "Digit2" => Some(0x2),
+        "Digit3" => Some(0x3),
+        "Digit4" => Some(0xC),
+        "KeyW" => Some(0x5),
+        "KeyQ" => Some(0x4),
+        "KeyE" => Some(0x6),
+        "KeyR" => Some(0xD),
+        "KeyA" => Some(0x7),
+        "KeyS" => Some(0x8),
+        "KeyD" => Some(0x9),
+        "KeyF" => Some(0xE),
+        "KeyZ" => Some(0xA),
+        "KeyX" => Some(0x0),
+        "KeyC" => Some(0xB),
+        "KeyV" => Some(0xF),
         _ => None,
     }
 }
